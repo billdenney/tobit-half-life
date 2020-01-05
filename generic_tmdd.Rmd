@@ -1,0 +1,58 @@
+---
+title: "Generic, Controllable 3-compartment TMDD Model"
+output: mrgsolve:::document
+---
+
+```{R}
+knitr::chunk_opts$set(eval=FALSE)
+```
+
+# Compartments
+```{cmt}
+GUT CENT P1 P2
+```
+
+# Parameters
+```{param}
+@annotated
+Ka      : 0 : Absorption rate (1/time)
+CL      : 0 : Central compartment clearance (volume/time)
+CLTMDD  : 0 : Target-mediated maximum clearance (volume/time)
+C50TMDD : 1 : Target-mediated concentration yielding 50% of maximum clearance (mass/volume)
+Vcentral: 1 : Central volume of distribution (volume)
+Vperiph1: 1 : Peripheral 1 volume of distribution (volume)
+Vperiph2: 1 : Peripheral 2 volume of distribution (volume)
+Qcp1    : 0 : Intercompartmental clearance between the central and peripheral 1 compartments (volume/time)
+Qcp2    : 0 : Intercompartmental clearance between the central and peripheral 2 compartments (volume/time)
+```
+
+# Residual Variability
+```{sigma}
+@annotated
+PROP : 0.1 : var(Proportional error (fraction))
+ADD  : 0   : var(Additive error (mass/volume))
+```
+
+# Model
+```{main}
+double Kel = CL/Vcentral;
+double K12 = Qcp1/Vcentral;
+double K21 = Qcp1/Vperiph1;
+double K13 = Qcp2/Vcentral;
+double K31 = Qcp2/Vperiph2;
+```
+
+# Differential Equations
+```{ode}
+double KelTMDD = CLTMDD/Vcentral*CENT/Vcentral/(C50TMDD + CENT/Vcentral);
+dxdt_GUT  = -Ka*GUT;
+dxdt_CENT =  Ka*GUT - Kel*CENT - KelTMDD*CENT - K12*CENT - K13*CENT + K21*P1 + K31*P2;
+dxdt_P1   =                                     K12*CENT            - K21*P1;
+dxdt_P2   =                                                K13*CENT          - K31*P2;
+```
+
+# Outputs
+```{table}
+capture CP_noerror = CENT/Vcentral;
+capture CP = CP_noerror + (CP_noerror*PROP) + ADD;
+```
